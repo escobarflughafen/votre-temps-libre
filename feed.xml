@@ -1,0 +1,190 @@
+<?xml version="1.0" encoding="utf-8"?><feed xmlns="http://www.w3.org/2005/Atom" ><generator uri="https://jekyllrb.com/" version="4.2.2">Jekyll</generator><link href="http://yourdomain.com/feed.xml" rel="self" type="application/atom+xml" /><link href="http://yourdomain.com/" rel="alternate" type="text/html" /><updated>2024-03-28T09:35:43+00:00</updated><id>http://yourdomain.com/feed.xml</id><title type="html">Your Site Title</title><subtitle>This is an example site description. You can use Markdown here.</subtitle><entry><title type="html">Pthreads</title><link href="http://yourdomain.com/2024/03/28/pthreads.html" rel="alternate" type="text/html" title="Pthreads" /><published>2024-03-28T00:00:00+00:00</published><updated>2024-03-28T00:00:00+00:00</updated><id>http://yourdomain.com/2024/03/28/pthreads</id><content type="html" xml:base="http://yourdomain.com/2024/03/28/pthreads.html"><![CDATA[<h1 id="pthread-stdthread-in-cpp"><code class="language-plaintext highlighter-rouge">pthread</code> (<code class="language-plaintext highlighter-rouge">std::thread</code>) in CPP</h1>
+
+<h2 id="sample-shared-message-queue">Sample: Shared Message Queue</h2>
+
+<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;vector&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;string&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;mutex&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;queue&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;condition_variable&gt;</span><span class="cp">
+</span>
+<span class="c1">// std::vector&lt;std::string&gt; shared_list = {};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">queue</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">shared_list</span> <span class="o">=</span> <span class="p">{};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">mutex</span> <span class="n">mtx_list</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">condition_variable</span> <span class="n">cv_list</span><span class="p">;</span>
+<span class="kt">bool</span> <span class="n">ready</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="n">keyboard</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">bool</span> <span class="n">quit</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">input</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">//std::cout &lt;&lt; "\n" &lt;&lt; "Enter a word: ";</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cin</span> <span class="o">&gt;&gt;</span> <span class="n">input</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">input</span> <span class="o">==</span> <span class="s">"!"</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">quit</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="p">{</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lck</span><span class="p">(</span><span class="n">mtx_list</span><span class="p">);</span>
+            <span class="n">shared_list</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">input</span><span class="p">);</span>
+            <span class="n">ready</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="n">cv_list</span><span class="p">.</span><span class="n">notify_all</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="n">input</span> <span class="o">=</span> <span class="s">""</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Exiting the keyboard thread."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">screen</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">bool</span> <span class="n">quit</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">to_output</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">unique_lock</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lck</span><span class="p">(</span><span class="n">mtx_list</span><span class="p">);</span>
+        <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">ready</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">cv_list</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">lck</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">shared_list</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span>
+        <span class="p">{</span>
+            <span class="n">to_output</span> <span class="o">=</span> <span class="n">shared_list</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">to_output</span> <span class="o">==</span> <span class="s">"!"</span><span class="p">)</span>
+            <span class="p">{</span>
+                <span class="n">quit</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+
+            <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">to_output</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\t</span><span class="s">"</span><span class="p">;</span>
+
+            <span class="n">shared_list</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="n">ready</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Exiting the screen thread."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="kr">thread</span> <span class="n">t_keyboard</span><span class="p">(</span><span class="n">keyboard</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="kr">thread</span> <span class="n">t_screen</span><span class="p">(</span><span class="n">screen</span><span class="p">);</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Here is a demo of using std::thread to control a shared list."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="n">t_keyboard</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+    <span class="n">t_screen</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="components">Components</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">vector</code>
+    <ul>
+      <li></li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">queue</code>
+    <ul>
+      <li>member variables</li>
+      <li>member functions</li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">thread</code>
+    <ul>
+      <li>member variables</li>
+      <li>member functions</li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">mutex</code>
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">std::mutex</code>
+        <ul>
+          <li></li>
+        </ul>
+      </li>
+      <li><code class="language-plaintext highlighter-rouge">std::lock_guard&lt;&gt;</code></li>
+      <li><code class="language-plaintext highlighter-rouge">std::unique_lock&lt;&gt;</code></li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">condition_variable</code>
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">std::condition_variable</code></li>
+    </ul>
+  </li>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[pthread (std::thread) in CPP]]></summary></entry><entry><title type="html">Sockets</title><link href="http://yourdomain.com/2024/03/25/sockets.html" rel="alternate" type="text/html" title="Sockets" /><published>2024-03-25T00:00:00+00:00</published><updated>2024-03-25T00:00:00+00:00</updated><id>http://yourdomain.com/2024/03/25/sockets</id><content type="html" xml:base="http://yourdomain.com/2024/03/25/sockets.html"><![CDATA[<h2 id="initialize-a-socket">Initialize a socket</h2>
+<ul>
+  <li>Create a socket: <code class="language-plaintext highlighter-rouge">socket()</code>, specifying the address family and socket type.</li>
+  <li>Bind to address: <code class="language-plaintext highlighter-rouge">bind()</code>, specifying the local address to listen on.</li>
+  <li>Listen on the socket: <code class="language-plaintext highlighter-rouge">listen()</code>, specifying the backlog size.</li>
+  <li>Accept incoming connection: <code class="language-plaintext highlighter-rouge">accpet()</code>, creating new socket fd for the connection.</li>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[Initialize a socket Create a socket: socket(), specifying the address family and socket type. Bind to address: bind(), specifying the local address to listen on. Listen on the socket: listen(), specifying the backlog size. Accept incoming connection: accpet(), creating new socket fd for the connection.]]></summary></entry><entry><title type="html">Weekly3</title><link href="http://yourdomain.com/2024/03/24/weekly3.html" rel="alternate" type="text/html" title="Weekly3" /><published>2024-03-24T00:00:00+00:00</published><updated>2024-03-24T00:00:00+00:00</updated><id>http://yourdomain.com/2024/03/24/weekly3</id><content type="html" xml:base="http://yourdomain.com/2024/03/24/weekly3.html"><![CDATA[<p>It has been two weeks since my last weekly. First, I passed the knowledge and road test of my BC driver license.
+Quite a suprise that the process has been smooth to me because many of my friends have failed in their first road test.
+Even though I can only apply for a novice license, I feel much relieved since I’ve no longer needed to worry about that
+I cannot use my Chinese one after graduation.
+Besides getting my license, I really need to make extra obeservation on the road while driving after a near miss.</p>
+
+<p>Thinking about my graduation next month, I really need to be serious on this. A sudden change on BC PNP has been
+announced this Tuesday. Although I’m not affected by that new policy, it still make me to reflect on myself that
+how I can improve myself to adapt the life here after one year and half since my first arrival. A lot of students
+who are affected went to a protest this Saturday. It elicited a lot confusion and barrel in between international 
+students, residents and netizens. Since this is a privileged pathway, I have to say I am lucky and I should never
+rely on these in my future. Sometimes it is too good to be true. A friend of mine has been low in mood this week.
+I wish her can be happy in the future. She liked the songs I shared to her. People are superficial here, I need to
+avoid becoming them.</p>
+
+<p>Last Sunday I went to English beach to see the sunset. It healed my tiredness throughout the week. 
+It is blessed that last Sunday, this Sunday and next Sunday are sunny.
+My cousin was accepted by his target medical school, congrats.</p>
+
+<p>As usual the songs during this two weeks：</p>
+<ul>
+  <li><a href="https://www.youtube.com/watch?v=UxxajLWwzqY">Icona Pop - I Love It (feat. Charli XCX)</a></li>
+  <li><a href="https://www.youtube.com/watch?v=GLPdMviGxzg">指切り</a></li>
+  <li><a href="https://www.youtube.com/watch?v=cyBHtyh0rQA">FLY</a></li>
+  <li><a href="https://www.youtube.com/watch?v=xKISdd2mKzU">Labi Siffre - I Got The… (1975)</a></li>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[It has been two weeks since my last weekly. First, I passed the knowledge and road test of my BC driver license. Quite a suprise that the process has been smooth to me because many of my friends have failed in their first road test. Even though I can only apply for a novice license, I feel much relieved since I’ve no longer needed to worry about that I cannot use my Chinese one after graduation. Besides getting my license, I really need to make extra obeservation on the road while driving after a near miss.]]></summary></entry><entry><title type="html">Weekly2</title><link href="http://yourdomain.com/2024/03/10/weekly2.html" rel="alternate" type="text/html" title="Weekly2" /><published>2024-03-10T00:00:00+00:00</published><updated>2024-03-10T00:00:00+00:00</updated><id>http://yourdomain.com/2024/03/10/weekly2</id><content type="html" xml:base="http://yourdomain.com/2024/03/10/weekly2.html"><![CDATA[<p>A good friend of mine came back to Vancouver recently. I picked him up at the airport and we had a great reunion meal - Pho 99 on North Road.</p>
+
+<p>On Friday morning, I tried to do delivery and it went very well - orders were coming one after another and tipped well. Will do another morning shift on Monday next week (one day before I hand in my license to ICBC). I have saved a lot on gas spending by the recent promotion of Air Miles (60 Miles rewarded when redeeming 95 Miles for $10, and two times a day from 8th to 14th).</p>
+
+<p>First time for me to visit SFU Surrey campus, nice and clean, though, the neighbourhoods are sketchy. It is kinda like the <em>Wanshengwei Station</em>.</p>
+
+<p>I haven’t done much work in this week. However, in the next week, I will take the driving license test and wish to get the license as soon as possible.
+Also, renew my passport for the incoming PGWP application. Hope I will get a Canadian one within 5 years.</p>
+
+<p>Talking to her came to a block that I feel that I am too dull or awkward in replies and she said I behaved like a robot， <em>“Hi, Siri”</em>. No rizz for me. I wish I could be there one day or she would come. Need to find more interesting topics, or, delve our talk into a deeper context.</p>
+
+<p>Here are some songs I’ve played all along this week,</p>
+
+<ul>
+  <li><a href="https://www.youtube.com/watch?v=ZaxUZH0cbhM&amp;ab_channel=CruiseControl"><em>Venus as a Boy</em> - Björk</a></li>
+  <li><a href="https://www.youtube.com/watch?v=0OEoJvphEME&amp;ab_channel=ThomasCradden"><em>Pap-Pi-Doo-Bi-Doo-Ba 物語</em> - Ohtaki Eiichi</a> - She liked this!</li>
+  <li><a href="https://www.youtube.com/watch?v=RgACAdw_K2I&amp;ab_channel=Doyouknow%3F"><em>COSMIC SURFIN’ - YMO</em></a></li>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[A good friend of mine came back to Vancouver recently. I picked him up at the airport and we had a great reunion meal - Pho 99 on North Road.]]></summary></entry><entry><title type="html">Weekly1</title><link href="http://yourdomain.com/2024/03/03/weekly1.html" rel="alternate" type="text/html" title="Weekly1" /><published>2024-03-03T00:00:00+00:00</published><updated>2024-03-03T00:00:00+00:00</updated><id>http://yourdomain.com/2024/03/03/weekly1</id><content type="html" xml:base="http://yourdomain.com/2024/03/03/weekly1.html"><![CDATA[<p>Well, another week has passed. I feel that since the BIBIFI project was completed, I have had less energy for programming or other learning activities. I’m not willing to examine the solution for pthread programming, nor am I motivated to work on leetcode.</p>
+
+<p>I can hardly wake up; usually, it is past 12 pm, not to mention early in the morning. Even though I am able to drive to campus, how can I attend there on time? Not to say that I need to take the road test later next week, and I cannot drive by then.</p>
+
+<p>Vancouver is such a nice place to live. But why do I feel that I fear spending time relaxing and walking around? What am I waiting for? I will stay at home and do nothing, barely looking at the screen, rarely reading a book, wasting my time.</p>
+
+<p>Although I have made myself tough on that breakup, the past, the thing we did together, and the words are still haunting me. I can’t count how many hours I spend each day recalling those mischiefs. <em>“The eyes, chico, they never lie.”</em></p>
+
+<p>You need to change…</p>
+
+<p>Nevermind, here are some songs that I played a lot in this week.</p>
+<ul>
+  <li><a href="https://open.spotify.com/track/1ko2lVN0vKGUl9zrU0qSlT">Just the Two of Us</a></li>
+  <li><a href="https://open.spotify.com/track/1oWh9ZsPP0pWaw7T5yAwgf">The Return of the Giant Hogweed</a></li>
+  <li><a href="https://open.spotify.com/track/3mJ9Q5SqggJW1EDs0YVASq">Tears in My Eyes</a></li>
+</ul>]]></content><author><name></name></author><summary type="html"><![CDATA[Well, another week has passed. I feel that since the BIBIFI project was completed, I have had less energy for programming or other learning activities. I’m not willing to examine the solution for pthread programming, nor am I motivated to work on leetcode.]]></summary></entry></feed>

@@ -1,0 +1,128 @@
+<h1 id="pthread-stdthread-in-cpp"><code class="language-plaintext highlighter-rouge">pthread</code> (<code class="language-plaintext highlighter-rouge">std::thread</code>) in CPP</h1>
+
+<h2 id="sample-shared-message-queue">Sample: Shared Message Queue</h2>
+
+<div class="language-c++ highlighter-rouge"><div class="highlight"><pre class="highlight"><code><span class="cp">#include</span> <span class="cpf">&lt;iostream&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;vector&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;thread&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;string&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;mutex&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;queue&gt;</span><span class="cp">
+#include</span> <span class="cpf">&lt;condition_variable&gt;</span><span class="cp">
+</span>
+<span class="c1">// std::vector&lt;std::string&gt; shared_list = {};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">queue</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="o">&gt;</span> <span class="n">shared_list</span> <span class="o">=</span> <span class="p">{};</span>
+<span class="n">std</span><span class="o">::</span><span class="n">mutex</span> <span class="n">mtx_list</span><span class="p">;</span>
+<span class="n">std</span><span class="o">::</span><span class="n">condition_variable</span> <span class="n">cv_list</span><span class="p">;</span>
+<span class="kt">bool</span> <span class="n">ready</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+
+<span class="kt">void</span> <span class="n">keyboard</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">bool</span> <span class="n">quit</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">input</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="c1">//std::cout &lt;&lt; "\n" &lt;&lt; "Enter a word: ";</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cin</span> <span class="o">&gt;&gt;</span> <span class="n">input</span><span class="p">;</span>
+        <span class="k">if</span> <span class="p">(</span><span class="n">input</span> <span class="o">==</span> <span class="s">"!"</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">quit</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+        <span class="p">}</span>
+        <span class="p">{</span>
+            <span class="n">std</span><span class="o">::</span><span class="n">lock_guard</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lck</span><span class="p">(</span><span class="n">mtx_list</span><span class="p">);</span>
+            <span class="n">shared_list</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">input</span><span class="p">);</span>
+            <span class="n">ready</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+            <span class="n">cv_list</span><span class="p">.</span><span class="n">notify_all</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="n">input</span> <span class="o">=</span> <span class="s">""</span><span class="p">;</span>
+    <span class="p">}</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Exiting the keyboard thread."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span> <span class="n">screen</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="kt">bool</span> <span class="n">quit</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="n">std</span><span class="o">::</span><span class="n">string</span> <span class="n">to_output</span><span class="p">;</span>
+
+    <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">quit</span><span class="p">)</span>
+    <span class="p">{</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">unique_lock</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">mutex</span><span class="o">&gt;</span> <span class="n">lck</span><span class="p">(</span><span class="n">mtx_list</span><span class="p">);</span>
+        <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">ready</span><span class="p">)</span>
+        <span class="p">{</span>
+            <span class="n">cv_list</span><span class="p">.</span><span class="n">wait</span><span class="p">(</span><span class="n">lck</span><span class="p">);</span>
+        <span class="p">}</span>
+
+        <span class="k">while</span> <span class="p">(</span><span class="o">!</span><span class="n">shared_list</span><span class="p">.</span><span class="n">empty</span><span class="p">())</span>
+        <span class="p">{</span>
+            <span class="n">to_output</span> <span class="o">=</span> <span class="n">shared_list</span><span class="p">.</span><span class="n">front</span><span class="p">();</span>
+            <span class="k">if</span> <span class="p">(</span><span class="n">to_output</span> <span class="o">==</span> <span class="s">"!"</span><span class="p">)</span>
+            <span class="p">{</span>
+                <span class="n">quit</span> <span class="o">=</span> <span class="nb">true</span><span class="p">;</span>
+                <span class="k">break</span><span class="p">;</span>
+            <span class="p">}</span>
+
+            <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">to_output</span> <span class="o">&lt;&lt;</span> <span class="s">"</span><span class="se">\t</span><span class="s">"</span><span class="p">;</span>
+
+            <span class="n">shared_list</span><span class="p">.</span><span class="n">pop</span><span class="p">();</span>
+        <span class="p">}</span>
+        <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+        <span class="n">ready</span> <span class="o">=</span> <span class="nb">false</span><span class="p">;</span>
+    <span class="p">}</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Exiting the screen thread."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">int</span> <span class="n">main</span><span class="p">()</span>
+<span class="p">{</span>
+    <span class="n">std</span><span class="o">::</span><span class="kr">thread</span> <span class="n">t_keyboard</span><span class="p">(</span><span class="n">keyboard</span><span class="p">);</span>
+    <span class="n">std</span><span class="o">::</span><span class="kr">thread</span> <span class="n">t_screen</span><span class="p">(</span><span class="n">screen</span><span class="p">);</span>
+
+    <span class="n">std</span><span class="o">::</span><span class="n">cout</span> <span class="o">&lt;&lt;</span> <span class="s">"Here is a demo of using std::thread to control a shared list."</span> <span class="o">&lt;&lt;</span> <span class="n">std</span><span class="o">::</span><span class="n">endl</span><span class="p">;</span>
+
+    <span class="n">t_keyboard</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+    <span class="n">t_screen</span><span class="p">.</span><span class="n">join</span><span class="p">();</span>
+
+    <span class="k">return</span> <span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
+</code></pre></div></div>
+
+<h2 id="components">Components</h2>
+
+<ul>
+  <li><code class="language-plaintext highlighter-rouge">vector</code>
+    <ul>
+      <li></li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">queue</code>
+    <ul>
+      <li>member variables</li>
+      <li>member functions</li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">thread</code>
+    <ul>
+      <li>member variables</li>
+      <li>member functions</li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">mutex</code>
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">std::mutex</code>
+        <ul>
+          <li></li>
+        </ul>
+      </li>
+      <li><code class="language-plaintext highlighter-rouge">std::lock_guard&lt;&gt;</code></li>
+      <li><code class="language-plaintext highlighter-rouge">std::unique_lock&lt;&gt;</code></li>
+    </ul>
+  </li>
+  <li><code class="language-plaintext highlighter-rouge">condition_variable</code>
+    <ul>
+      <li><code class="language-plaintext highlighter-rouge">std::condition_variable</code></li>
+    </ul>
+  </li>
+</ul>
+
